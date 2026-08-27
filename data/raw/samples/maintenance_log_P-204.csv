@@ -1,0 +1,4 @@
+date,equipment_id,action,technician
+2026-08-10,P-204,seal inspection,Tech A
+2026-08-12,P-204,valve replacement,Tech B
+2026-08-13,P-204,pressure test,Tech C

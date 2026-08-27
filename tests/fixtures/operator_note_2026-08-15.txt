@@ -1,0 +1,4 @@
+Operator Note — 2026-08-15 14:35
+Abnormal vibration observed in Pump P-204 at 14:35.
+Pressure gauge showed 4.8 bar spike. Loud noise reported.
+Supervisor notified.

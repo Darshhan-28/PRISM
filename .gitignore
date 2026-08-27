@@ -1,0 +1,61 @@
+# SIH26117 — Sovereign Workbench gitignore
+# Keep synthetic samples, ignore generated/local artefacts
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.egg-info/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Data — ignore generated, keep samples + keepfiles
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/samples/
+!data/raw/samples/.gitkeep
+!data/raw/samples/*
+data/processed/*
+!data/processed/.gitkeep
+data/vector_store/*
+!data/vector_store/.gitkeep
+data/workbench.db
+data/workbench.db-journal
+data/audit/*
+!data/audit/.gitkeep
+
+# Models — large weights
+models/*
+!models/.gitkeep
+*.gguf
+*.bin
+*.safetensors
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+!data/raw/samples/*.log
+!tests/fixtures/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage / test artefacts
+.coverage
+htmlcov/
+.pytest_cache/

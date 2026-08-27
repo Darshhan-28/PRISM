@@ -1,0 +1,10 @@
+# SIH26117 — Phase 2 runtime dependencies (local/offline only)
+# Keep lightweight for 16 GB / Iris Xe. No torch, no cloud SDKs.
+
+pydantic>=2.9,<3
+pydantic-settings>=2.4,<3
+pypdf>=5.0,<6
+chromadb>=0.5.5,<1
+# FastEmbed (ONNX, no torch) — optional real embedder, benchmark before locking
+fastembed>=0.3,<1
+onnxruntime>=1.18,<2

@@ -1,0 +1,6 @@
+[
+  {"timestamp": "2026-08-15T08:00:00Z", "equipment_id": "P-204", "metric": "pressure_bar", "value": 2.3},
+  {"timestamp": "2026-08-15T12:00:00Z", "equipment_id": "P-204", "metric": "pressure_bar", "value": 3.1},
+  {"timestamp": "2026-08-15T14:30:00Z", "equipment_id": "P-204", "metric": "pressure_bar", "value": 4.8},
+  {"timestamp": "2026-08-15T15:00:00Z", "equipment_id": "P-204", "metric": "pressure_bar", "value": 4.9}
+]
