@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 4 — Local LLM Adapter (Complete)
+> **Status:** Phase 5 — Evidence-backed Answering (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -178,12 +178,12 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.11 Evidence Engine
 
-**Planned location:** `backend/app/evidence/engine.py`
+**Location:** `backend/app/evidence/engine.py:1` (Phase 5 complete)
 
-- Inputs: draft answer claims + retrieved chunks.
-- Checks: citation coverage, quote grounding, numeric consistency.
-- Output: per-claim verdict + overall `EvidenceState` + missing-evidence list.
-- Evidence-gating is mandatory — no answer is returned as fact without it.
+- Inputs: retrieved chunks + LLM answer.
+- Checks: keyword conflict (`replaced` vs `pending`, `normal` vs `exceeds`), citation parse `\[...\]`, invalid citation, per-claim coverage (split by sentence), provenance dedup.
+- Output: `EvidenceResult{state: SUPPORTED|PARTIALLY_SUPPORTED|INSUFFICIENT_EVIDENCE|CONFLICTING_EVIDENCE, evidence_refs: EvidenceRef[], citations_found, invalid_citations, missing_coverage, conflicting}`.
+- Integration: `answer_with_evidence(query, retriever, llm_adapter)` → `Retriever.retrieve` → `build_grounded_prompt` (delimited `<RETRIEVED_CHUNK>`) → `LLMAdapter.generate` → `evaluate` (DI, no global). If no retrieved → `INSUFFICIENT_EVIDENCE` without LLM call. Offline, deterministic, CPU-only.
 
 ### 3.12 Contradiction Engine
 
@@ -316,13 +316,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 4 complete — MockAdapter default, OllamaAdapter (httpx, localhost guard), factory, 59 tests. Next: Phase 5 — Evidence-backed answering (grounded generation, evidence states).
+Phase 5 complete — Evidence engine with 4 states, DI via Retriever+LLMAdapter, 78 tests. Next: Phase 6 — Agent/tool architecture (deterministic tools, registry).
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 4 complete. Added llm adapter, MockAdapter, OllamaAdapter, factory, httpx, 59 tests.
+**Last updated:** 2026-08-28 — Phase 5 complete. Added evidence engine, grounded prompt, DI, 78 tests.
 
-## 9. Phase 2–4 ADRs
+## 9. Phase 2–5 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -332,3 +332,4 @@ Phase 4 complete — MockAdapter default, OllamaAdapter (httpx, localhost guard)
 | ADR-010 | MiniLM via FastEmbed selected (Phase 3) | 1.0 vs 0.6 top-1, 98 vs 113 MB, 14 vs 69 ms, 10.3 vs 13.5s load | Accepted |
 | ADR-011 | Retriever thresholds + metadata allowlist | Prevents low-score hits, enables equipment/file-type filtering, keeps provenance | Accepted |
 | ADR-012 | LLM Adapter: Mock default, Ollama httpx localhost-only | Offline, swappable without orchestrator rewrite, 30s timeout, typed errors | Accepted (Phase 4) |
+| ADR-013 | Evidence engine 4 states + DI | Citation/provenance gated, deterministic, CPU-only, offline | Accepted (Phase 5) |

@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 4 — Local LLM Adapter (Complete).** MockAdapter default, OllamaAdapter (httpx, localhost-only), factory, 59 tests. Next: Phase 5 — Evidence-backed answering.
+Current phase: **Phase 5 — Evidence-backed Answering (Complete).** Evidence engine with 4 states, citation/provenance checks, Retriever+LLMAdapter DI, 78 tests.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 4 complete. MockAdapter default, OllamaAdapter with local-only guard, httpx, 59 tests. No model download.
+**Last updated:** 2026-08-28 — Phase 5 complete. Evidence engine, DI, 78 tests, offline. Next: Phase 6 — Agent/tool architecture.
