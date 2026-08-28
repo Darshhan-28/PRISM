@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 2 — Local Document Ingestion (In Progress).** Phase 1 docs approved. Implementing `backend/app/ingestion/` + `backend/app/retrieval/` (adapter protocols) + `backend/app/store/` + `data/` scaffolding.
+Current phase: **Phase 3 — Local Embeddings + Retrieval (Complete).** Benchmarked MiniLM wins (1.0 top-1, 10.3s/98MB vs BGE 0.6/13.5s/113MB), implemented Retriever with thresholds + metadata filter, 40 tests.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-27 — Phase 2 complete (local ingestion: validator, parsers, chunker, pipeline, MockEmbedder, ChromaStore, CLI, 6 synthetic samples, 33 tests). Next: Phase 3 — Local embeddings + retrieval (real embedder benchmarking).
+**Last updated:** 2026-08-28 — Phase 3 complete. Next: Phase 4 — Local LLM integration (adapter + MockAdapter, no Qwen yet).

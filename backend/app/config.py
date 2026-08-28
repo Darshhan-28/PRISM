@@ -34,10 +34,15 @@ class IngestionConfig(BaseSettings):
 
     # Providers (replaceable via env)
     embedding_provider: str = Field(default="mock")  # mock | fastembed | sentence_transformers
-    embedding_model: str = Field(default="BAAI/bge-small-en-v1.5")
+    embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2")  # Benchmark 2026-08-28: MiniLM wins (10.3s load, 98MB, 14ms vs bge 13.5s/113MB/69ms, 1.0 vs 0.6 top-1)
     embedding_dim: int = 384
     vector_store_provider: str = Field(default="chroma")  # chroma | sqlite-vec (alt)
     vector_store_collection: str = Field(default="chunks")
+
+    # Retrieval (Phase 3)
+    retrieval_top_k: int = Field(default=6, ge=1, le=20)
+    retrieval_threshold: float = Field(default=0.0, ge=0.0, le=1.0)  # cosine similarity threshold (0.0 = no filtering)
+    retrieval_min_score: float = Field(default=0.0)
 
 
 # Singleton accessor used by pipeline/tools — import `get_config()` not raw env.

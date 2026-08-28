@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 2 — Local Document Ingestion (Complete)
+> **Status:** Phase 3 — Local Embeddings + Retrieval (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -111,12 +111,12 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.5 Embeddings
 
-**Planned location:** `backend/app/retrieval/embedder.py`
+**Location:** `backend/app/retrieval/embedder.py`
 
-- Local embedding model via `EmbeddingAdapter` (same adapter pattern).
-- Candidate (benchmark later): `sentence-transformers/all-MiniLM-L6-v2`, `bge-small-en-v1.5`, or `nomic-embed-text` via Ollama — small, CPU-friendly, < 150 MB.
+- Local embedding model via `EmbeddingAdapter` (same adapter pattern). Default `MockEmbedder` for tests; `FastEmbedEmbedder` for prod.
+- **Selected (Phase 3 benchmark 2026-08-28, docs/BENCHMARK_EMBEDDINGS.md):** `sentence-transformers/all-MiniLM-L6-v2` (384 dim, ~80 MB ONNX) — 10.3s load, 98 MB delta, 14ms single, 1.0 top-1 vs BGE 13.5s/113MB/69ms/0.6. Runner-up `BAAI/bge-small-en-v1.5` remains swappable via `EMBEDDING_MODEL`.
 - Batch embedding at ingest; single-text embedding at query.
-- No network call.
+- CPU-only, OFFLINE after download (cached `~/.cache/fastembed` or `%LOCALAPPDATA%`).
 
 ### 3.6 Vector Store
 
@@ -146,11 +146,11 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.8 Retrieval (RAG)
 
-**Planned location:** `backend/app/retrieval/retriever.py`
+**Location:** `backend/app/retrieval/retriever.py:1` (Phase 3 complete)
 
-- Query → `EmbeddingAdapter.embed` → vector search (top-k, e.g., k=6–8) → optional metadata filter (equipmentId, date range) → rerank (simple cosine or lightweight cross-encoder later).
-- Returns `RetrievedChunk[]` with scores + provenance (doc/page/chunkId).
-- No LLM in retrieval; deterministic.
+- Query → `EmbeddingAdapter.embed` → `ChromaStore.search` (top_k 1..20, default 6) → distance→similarity (`score = 1 - distance`) → threshold filter (`retrieval_threshold`, 0.0 = no filter) → allowed metadata filters (`filename`, `file_type`, `document_id`, `sha256`, etc.) → returns `RetrievedChunk[chunk_id, text, score, distance, metadata]`.
+- Full provenance preserved (`chunk_id`, `document_id`, `filename`, `page_number`, `sha256`) for evidence gating.
+- No LLM in retrieval; deterministic; CPU-only; works offline with `MockEmbedder` or `FastEmbedEmbedder` (MiniLM default).
 
 ### 3.9 Tool Layer
 
@@ -316,16 +316,18 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 2 complete — 6 file types ingesting locally with full provenance, MockEmbedder default, ChromaStore, 33 tests passing. Next: Phase 3 — Local embeddings + retrieval (benchmark FastEmbed bge-small vs MiniLM, implement retriever, evidence trace).
+Phase 3 complete — MiniLM selected, Retriever implemented, 40 tests. Next: Phase 4 — Local LLM integration (adapter + MockAdapter, no Qwen yet).
 
 ---
 
-**Last updated:** 2026-08-27 — Phase 2 complete. Implemented ingestion pipeline, 6 parsers, chunker, MockEmbedder, ChromaStore, CLI, synthetic flagship samples.
+**Last updated:** 2026-08-28 — Phase 3 complete. Added benchmark (docs/BENCHMARK_EMBEDDINGS.md), retriever, config thresholds.
 
-## 9. Phase 2 ADRs
+## 9. Phase 2 & 3 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
 | ADR-007 | `pypdf` for PDF, `fastembed` (ONNX) preferred embedder, `chromadb` default vector store | Lightweight, Windows 3.13 wheels, no torch by default, swappable via adapter protocols | Accepted (Phase 2) |
 | ADR-008 | Character-based chunking (800/120) with sentence-boundary preference | No tokenizer dep, deterministic, fits 16 GB | Accepted |
 | ADR-009 | `EmbeddingAdapter` + `VectorStore` protocols in Phase 2 (ahead of Phase 3) | Keeps providers replaceable from day one; mock for tests, no network required | Accepted |
+| ADR-010 | MiniLM via FastEmbed selected (Phase 3) | 1.0 vs 0.6 top-1, 98 vs 113 MB, 14 vs 69 ms, 10.3 vs 13.5s load | Accepted |
+| ADR-011 | Retriever thresholds + metadata allowlist | Prevents low-score hits, enables equipment/file-type filtering, keeps provenance | Accepted |
