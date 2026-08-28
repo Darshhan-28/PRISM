@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 7 — Investigation Mode (Complete)
+> **Status:** Phase 8 — Evidence Graph (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -177,6 +177,15 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 - Inputs: retrieved chunks + LLM answer.
 - Checks: keyword conflict (`replaced` vs `pending`, `normal` vs `exceeds`), citation parse `\[...\]`, invalid citation, per-claim coverage (split by sentence), provenance dedup.
 - Output: `EvidenceResult{state: SUPPORTED|PARTIALLY_SUPPORTED|INSUFFICIENT_EVIDENCE|CONFLICTING_EVIDENCE, evidence_refs: EvidenceRef[], citations_found, invalid_citations, missing_coverage, conflicting}`.
+
+### 3.11b Evidence Graph
+
+**Location:** `backend/app/evidence/graph.py:1` (Phase 8 complete)
+
+- Deterministic Pydantic `EvidenceGraph{nodes: dict, edges: dict}` with 6 node types `investigation|step|tool|document|chunk|claim` and 5 edge types `CONTAINS|USED_TOOL|PRODUCED|SUPPORTED_BY|DERIVED_FROM`.
+- API: `add_node`, `add_edge` (duplicate check, invalid ref rejection), `get_node`, `get_neighbors`, `get_subgraph`, `to_dict`/`from_dict`, `from_investigation(report)` builds `Investigation->Step->Tool->Evidence->Document->Chunk` plus `Claim SUPPORTED_BY Chunk`.
+- Reuses `InvestigationReport`/`EvidenceRef` (no duplication), preserves `document_id,chunk_id,filename,page_number,line_range,sha256,source_path,score`, stable IDs, idempotent construction.
+- Persistence: `evidence_graph_nodes(id,investigation_id,type,label,metadata)` + `evidence_graph_edges(id,investigation_id,from_node,to_node,relation)` in `data/workbench.db` via `save_to_db`/`load_from_db` (no new DB, offline, no LLM).
 - Integration: `answer_with_evidence(query, retriever, llm_adapter)` → `Retriever.retrieve` → `build_grounded_prompt` (delimited `<RETRIEVED_CHUNK>`) → `LLMAdapter.generate` → `evaluate` (DI, no global). If no retrieved → `INSUFFICIENT_EVIDENCE` without LLM call. Offline, deterministic, CPU-only.
 
 ### 3.12 Contradiction Engine
@@ -310,13 +319,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 7 complete — bounded orchestrator, 124 tests, offline. Next: Phase 8 — Evidence Graph (nodes/edges, trail).
+Phase 8 complete — Evidence Graph with 6 node types / 5 edge types, provenance preserved, persistence, 136 tests. Next: Phase 9 — Contradiction Detection.
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 7 complete. Added orchestrator, validation, persistence, 124 tests.
+**Last updated:** 2026-08-28 — Phase 8 complete. Added EvidenceGraph, persistence, 136 tests.
 
-## 9. Phase 2–7 ADRs
+## 9. Phase 2–8 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -329,3 +338,4 @@ Phase 7 complete — bounded orchestrator, 124 tests, offline. Next: Phase 8 —
 | ADR-013 | Evidence engine 4 states + DI | Citation/provenance gated, deterministic, CPU-only, offline | Accepted (Phase 5) |
 | ADR-014 | Tool layer deterministic, registry allowlist, SQLite | Reuses Retriever/Chroma/workbench.db, Pydantic validation, no LLM/network, provenance preserved | Accepted (Phase 6) |
 | ADR-015 | InvestigationOrchestrator bounded 8 steps, 30s, registry-only | LLM plans, code executes, evidence gating, persistence in workbench.db, MockAdapter offline | Accepted (Phase 7) |
+| ADR-016 | EvidenceGraph deterministic Pydantic, 6 nodes/5 edges, provenance | No duplicate, invalid ref rejection, stable IDs, from_investigation, persistence, offline | Accepted (Phase 8) |

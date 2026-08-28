@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 7 — Investigation Mode (Complete).** Bounded orchestrator (MAX_STEPS=8, 30s timeout), plan validation, registry execution, evidence gating, persistence, 124 tests.
+Current phase: **Phase 8 — Evidence Graph (Complete).** Deterministic graph with 6 node types, 5 edge types, provenance preserved, persistence in workbench.db, 136 tests.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 7 complete. Investigation orchestrator, 124 tests, offline. Next: Phase 8 — Evidence Graph.
+**Last updated:** 2026-08-28 — Phase 8 complete. Evidence Graph, 136 tests, offline. Next: Phase 9 — Contradiction Detection.
