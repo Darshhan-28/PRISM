@@ -1,13 +1,13 @@
 # BENCHMARK — Embeddings (FastEmbed, CPU-only)
 
-Date: 2026-08-28 07:29:42
+Date: 2026-08-28 07:34:49
 
 Machine: Windows 11, Intel 12th-gen mobile, 16 GB RAM, Iris Xe, Python 3.13.2
 
 | Model | Dim | Load (s) | Mem Δ (MB) | Batch 10 (s) | Single (ms) | Top-1 Acc |
 |---|---|---|---|---|---|---|
-| BAAI/bge-small-en-v1.5 | 384 | 13.47 | 112.8 | 0.68 | 69.0 | 0.6 |
-| sentence-transformers/all-MiniLM-L6-v2 | 384 | 10.28 | 98.2 | 0.12 | 14.0 | 1.0 |
+| BAAI/bge-small-en-v1.5 | 384 | 0.26 | 92.6 | 0.61 | 65.2 | 0.6 |
+| sentence-transformers/all-MiniLM-L6-v2 | 384 | 0.2 | 98.0 | 0.13 | 15.4 | 1.0 |
 
 ## Notes
 - Batch = 10 corpus chunks (synthetic industrial).

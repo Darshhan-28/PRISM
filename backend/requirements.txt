@@ -8,3 +8,4 @@ chromadb>=0.5.5,<1
 # FastEmbed (ONNX, no torch) — optional real embedder, benchmark before locking
 fastembed>=0.3,<1
 onnxruntime>=1.18,<2
+httpx>=0.27,<1  # Ollama local HTTP (Phase 4)

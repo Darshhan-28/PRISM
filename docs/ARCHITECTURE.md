@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 3 — Local Embeddings + Retrieval (Complete)
+> **Status:** Phase 4 — Local LLM Adapter (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -69,28 +69,28 @@ Offline invariant: if `internet_disabled == true`, the entire flow above still r
 
 ### 3.3 Local Model Runtime + Model Adapter
 
-**Planned location:** `backend/app/llm/`
+**Location:** `backend/app/llm/` (Phase 4 complete)
 
-**Adapter interface (planned — see `AGENTS.md:6`):**
+**Adapter interface:** `backend/app/llm/adapter.py:1`
 ```python
 class LLMAdapter(Protocol):
     def generate(self, prompt: str, system: str | None, **kwargs) -> str: ...
     async def generate_stream(self, prompt: str, system: str | None, **kwargs) -> AsyncIterator[str]: ...
-class EmbeddingAdapter(Protocol):
+    def health_check(self) -> dict: ...
+class EmbeddingAdapter(Protocol):  # in backend/app/retrieval/embedder.py:10
     def embed(self, texts: list[str]) -> list[list[float]]: ...
-
 class VisionAdapter(Protocol):  # stub until Phase 10
     def describe_image(self, image_bytes: bytes, prompt: str) -> str: ...
 ```
 
 - **Implementations:**
-  - `OllamaAdapter` — primary for dev (Ollama serves quantized GGUF models via local HTTP).
-  - `LlamaCppAdapter` — alternative (direct `llama.cpp` Python bindings, no daemon).
-  - `MockAdapter` — deterministic fixture for tests/CI (no model needed).
-  - Optional non-default `CloudAdapter` — only if explicitly enabled via `ALLOW_CLOUD_ADAPTER=true` for benchmarking; never in default path.
-- Model choice deferred until benchmarking. Candidates (quantized Q4_K_M, CPU-friendly): Qwen2.5 1.5B/3B, Phi-3 mini 3.8B, Gemma 2 2B, Llama 3.2 1B/3B. See `docs/SECURITY.md` for isolation implications.
-- Configuration via `config.yaml` / `.env`: `LLM_ADAPTER`, `LLM_MODEL`, `EMBEDDING_MODEL`, `OLLAMA_HOST`. No code change to swap adapters.
-- Resource guard: single model resident at a time by default; no concurrent multi-LLM on 16 GB RAM. Document memory budget per model.
+  - `OllamaAdapter` (`backend/app/llm/ollama_adapter.py:1`) — httpx to `http://localhost:11434`, localhost-only guard (`allow_cloud_adapter=false`), timeout 30s, typed errors `LLMTimeoutError`/`LLMUnavailableError`.
+  - `MockAdapter` (`backend/app/llm/mock_adapter.py:1`) — deterministic, canned responses, default for tests/CI (no model, no network).
+  - `LlamaCppAdapter` — deferred (raises `NotImplementedError` via factory).
+  - Optional `CloudAdapter` — only if `ALLOW_CLOUD_ADAPTER=true` (never default).
+- Candidates (quantized Q4_K_M, CPU): Qwen2.5 1.5B/3B, Phi-3 mini 3.8B — not downloaded in Phase 4.
+- Configuration via `backend/app/config.py:48` (`llm_provider`, `llm_model`, `llm_host`, `llm_timeout_s`, `allow_cloud_adapter`) — no code change to swap.
+- Resource guard: single model at a time, ~1.5 GB for Q4 1.5B + 0.1 GB adapter overhead (see §5).
 
 ### 3.4 Document Ingestion
 
@@ -316,13 +316,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 3 complete — MiniLM selected, Retriever implemented, 40 tests. Next: Phase 4 — Local LLM integration (adapter + MockAdapter, no Qwen yet).
+Phase 4 complete — MockAdapter default, OllamaAdapter (httpx, localhost guard), factory, 59 tests. Next: Phase 5 — Evidence-backed answering (grounded generation, evidence states).
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 3 complete. Added benchmark (docs/BENCHMARK_EMBEDDINGS.md), retriever, config thresholds.
+**Last updated:** 2026-08-28 — Phase 4 complete. Added llm adapter, MockAdapter, OllamaAdapter, factory, httpx, 59 tests.
 
-## 9. Phase 2 & 3 ADRs
+## 9. Phase 2–4 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -331,3 +331,4 @@ Phase 3 complete — MiniLM selected, Retriever implemented, 40 tests. Next: Pha
 | ADR-009 | `EmbeddingAdapter` + `VectorStore` protocols in Phase 2 (ahead of Phase 3) | Keeps providers replaceable from day one; mock for tests, no network required | Accepted |
 | ADR-010 | MiniLM via FastEmbed selected (Phase 3) | 1.0 vs 0.6 top-1, 98 vs 113 MB, 14 vs 69 ms, 10.3 vs 13.5s load | Accepted |
 | ADR-011 | Retriever thresholds + metadata allowlist | Prevents low-score hits, enables equipment/file-type filtering, keeps provenance | Accepted |
+| ADR-012 | LLM Adapter: Mock default, Ollama httpx localhost-only | Offline, swappable without orchestrator rewrite, 30s timeout, typed errors | Accepted (Phase 4) |

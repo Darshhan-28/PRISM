@@ -44,6 +44,15 @@ class IngestionConfig(BaseSettings):
     retrieval_threshold: float = Field(default=0.0, ge=0.0, le=1.0)  # cosine similarity threshold (0.0 = no filtering)
     retrieval_min_score: float = Field(default=0.0)
 
+    # LLM (Phase 4) — local-only, swappable via env
+    llm_provider: str = Field(default="mock")  # mock | ollama | llamacpp
+    llm_model: str = Field(default="qwen2.5:1.5b-instruct-q4_K_M")  # placeholder, not downloaded in Phase 4
+    llm_host: str = Field(default="http://localhost:11434")
+    llm_timeout_s: int = Field(default=30, ge=5, le=300)
+    llm_max_tokens: int = Field(default=512, ge=32, le=4096)
+    llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
+    allow_cloud_adapter: bool = Field(default=False)
+
 
 # Singleton accessor used by pipeline/tools — import `get_config()` not raw env.
 _config: IngestionConfig | None = None

@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 3 — Local Embeddings + Retrieval (Complete).** Benchmarked MiniLM wins (1.0 top-1, 10.3s/98MB vs BGE 0.6/13.5s/113MB), implemented Retriever with thresholds + metadata filter, 40 tests.
+Current phase: **Phase 4 — Local LLM Adapter (Complete).** MockAdapter default, OllamaAdapter (httpx, localhost-only), factory, 59 tests. Next: Phase 5 — Evidence-backed answering.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 3 complete. Next: Phase 4 — Local LLM integration (adapter + MockAdapter, no Qwen yet).
+**Last updated:** 2026-08-28 — Phase 4 complete. MockAdapter default, OllamaAdapter with local-only guard, httpx, 59 tests. No model download.
