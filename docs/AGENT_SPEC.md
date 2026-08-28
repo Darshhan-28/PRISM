@@ -1,6 +1,6 @@
 # AGENT_SPEC.md — Agent & Tool Architecture — SIH26117
 
-> **Status:** Phase 1 — Documentation only (no runtime code yet)
+> **Status:** Phase 6 — Tool Layer (Complete) — 4 tools + registry, see `backend/app/tools/`
 > **Principle:** One orchestrator + deterministic tools. LLM decides WHAT to do; code decides HOW.
 
 ## 1. Design Philosophy

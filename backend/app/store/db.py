@@ -30,6 +30,27 @@ CREATE TABLE IF NOT EXISTS chunks (
     ingested_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(doc_id);
+CREATE TABLE IF NOT EXISTS sensor_events (
+    id TEXT PRIMARY KEY,
+    equipment_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    value REAL NOT NULL,
+    source_file TEXT NOT NULL,
+    doc_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sensor_equipment ON sensor_events(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_sensor_timestamp ON sensor_events(timestamp);
+CREATE TABLE IF NOT EXISTS maintenance_logs (
+    id TEXT PRIMARY KEY,
+    equipment_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    action TEXT NOT NULL,
+    technician TEXT,
+    source_file TEXT NOT NULL,
+    doc_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_maint_equipment ON maintenance_logs(equipment_id);
 """
 
 
@@ -111,3 +132,17 @@ def delete_document(conn: sqlite3.Connection, doc_id: str) -> tuple[int, int]:
 def fetch_chunks_by_doc(conn: sqlite3.Connection, doc_id: str) -> list[sqlite3.Row]:
     cur = conn.execute("SELECT * FROM chunks WHERE doc_id=? ORDER BY id", (doc_id,))
     return cur.fetchall()
+
+
+def insert_sensor_event(conn: sqlite3.Connection, row: dict) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO sensor_events (id, equipment_id, timestamp, metric, value, source_file, doc_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (row["id"], row["equipment_id"], row["timestamp"], row["metric"], float(row["value"]), row["source_file"], row.get("doc_id")),
+    )
+
+
+def insert_maintenance_log(conn: sqlite3.Connection, row: dict) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO maintenance_logs (id, equipment_id, date, action, technician, source_file, doc_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (row["id"], row["equipment_id"], row["date"], row["action"], row.get("technician"), row["source_file"], row.get("doc_id")),
+    )

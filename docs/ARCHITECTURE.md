@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 5 — Evidence-backed Answering (Complete)
+> **Status:** Phase 6 — Tool Layer (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -154,12 +154,12 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.9 Tool Layer
 
-**Planned location:** `backend/app/tools/` — see `docs/AGENT_SPEC.md` for full contracts.
+**Location:** `backend/app/tools/` (Phase 6 complete)
 
-- Deterministic Python functions, not LLM-generated code execution.
-- Each tool: Pydantic `Input`/`Output`, input validation, permission check, evidence attachment, audit log write.
-- Planned tools: `search_documents`, `retrieve_evidence`, `query_sensor_data`, `search_maintenance_logs`, `inspect_image` (Phase 10 stub), `compare_sources`, `create_report`.
-- Orchestrator decides *which* tool and *with what args*; tool code decides *how* to execute.
+- Deterministic Python functions via `backend/app/tools/{search_documents.py:1,retrieve_evidence.py:1,query_sensor_data.py:1,search_maintenance_logs.py:1}`, no LLM, no network, no shell. Pydantic `Input`/`ToolOutput{success,result,evidence_refs,error}`.
+- Registry `backend/app/tools/registry.py:1` — explicit allowlist `search_documents|retrieve_evidence|query_sensor_data|search_maintenance_logs`, `execute_tool()` validates name+input before execution.
+- Tools reuse `Retriever`/`ChromaStore`/`SQLite workbench.db`; preserve `filename,document_id,chunk_id,page_number/line_range,sha256`.
+- Planned deferred: `inspect_image` (Phase 10), `compare_sources`, `create_report` (Phase 7+).
 
 ### 3.10 Agent / Investigation Orchestrator
 
@@ -316,13 +316,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 5 complete — Evidence engine with 4 states, DI via Retriever+LLMAdapter, 78 tests. Next: Phase 6 — Agent/tool architecture (deterministic tools, registry).
+Phase 6 complete — 4 deterministic tools, registry allowlist, SQLite sensor/maintenance, 110 tests. Next: Phase 7 — Investigation Mode (orchestrator planning, bounded execution, audit).
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 5 complete. Added evidence engine, grounded prompt, DI, 78 tests.
+**Last updated:** 2026-08-28 — Phase 6 complete. Added tool layer, registry, sensor/maintenance SQLite, 110 tests.
 
-## 9. Phase 2–5 ADRs
+## 9. Phase 2–6 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -333,3 +333,4 @@ Phase 5 complete — Evidence engine with 4 states, DI via Retriever+LLMAdapter,
 | ADR-011 | Retriever thresholds + metadata allowlist | Prevents low-score hits, enables equipment/file-type filtering, keeps provenance | Accepted |
 | ADR-012 | LLM Adapter: Mock default, Ollama httpx localhost-only | Offline, swappable without orchestrator rewrite, 30s timeout, typed errors | Accepted (Phase 4) |
 | ADR-013 | Evidence engine 4 states + DI | Citation/provenance gated, deterministic, CPU-only, offline | Accepted (Phase 5) |
+| ADR-014 | Tool layer deterministic, registry allowlist, SQLite | Reuses Retriever/Chroma/workbench.db, Pydantic validation, no LLM/network, provenance preserved | Accepted (Phase 6) |
