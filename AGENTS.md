@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 11 — Safety + Auditability (Complete).** Safety policy + audit trail, 180 tests.
+Current phase: **Phase 12 — Judge-Grade Demo UI + API (Complete).** FastAPI + Vite React, offline demo, 180 tests + frontend build.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 11 complete. Safety policy + audit logger, 180 tests, offline. Next: Phase 12 — Judge-grade UI/demo.
+**Last updated:** 2026-08-28 — Phase 12 complete. Demo UI+API, 180 tests, frontend build 154 kB, offline. Final phase.

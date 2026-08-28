@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 11 — Safety + Auditability (Complete)
+> **Status:** Phase 12 — Judge-Grade Demo UI + API (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -40,32 +40,38 @@ Offline invariant: if `internet_disabled == true`, the entire flow above still r
 
 ### 3.1 Frontend — Workbench UI
 
-**Planned location:** `frontend/src/`
+**Location:** `frontend/` (Phase 12 complete)
 
-- Lightweight Vite + TypeScript + React (or equivalent — keep bundle small for 16 GB host).
-- Views:
-  - **Workbench (Chat + Evidence panel):** query input, streaming answer, evidence cards with doc/page/line refs, evidence-state badge.
-  - **Investigation View:** objective, plan steps, tool calls, retrieved evidence, contradiction flags, final structured report, export.
-  - **Evidence Graph View:** nodes = Incident / Equipment / Sensor Event / Maintenance Record / SOP / Finding; edges = supports / contradicts / references.
-  - **Audit/Replay View:** timestamp, query, retrieved chunks, tools, decisions, final response.
-- No direct LLM calls from frontend. All via backend API.
-- Offline-friendly: static build served by FastAPI or simple dev server; no CDN dependency in production build.
+- Vite 5 + React 18 + JSX (no TypeScript dependency to keep the 16 GB host build fast). Build size: 154 kB JS (49 kB gz) + 0.5 kB HTML + 0.06 kB CSS — fits 16 GB.
+- Single-page Workbench combining all judge panels (`frontend/src/App.jsx:1`):
+  - **Dashboard** — document / chunk / investigation / vector-store counts; offline + mock-default flags.
+  - **Evidence Workspace** — local-document upload, investigation question, **Run Investigation**, demo presets.
+  - **Evidence Panel** — `evidence_refs` with filename, page/line, score, snippet, chunk_id, SHA-256, source path.
+  - **Contradiction Panel** — `contradictions` with `CONFLICTING_EVIDENCE` badge when sources disagree.
+  - **Evidence Graph Panel** — node chips (Investigation / Step / Tool / Document / Chunk) + edge list, 19 nodes for flagship scenario.
+  - **Audit / Safety Panel** — last 12 `audit_log` events with timestamp, event_type, tool, success, error_code.
+- No direct LLM calls from frontend. All traffic is `fetch('/api/...')` to the same origin (FastAPI serves `frontend/dist`).
+- Dev mode: Vite proxies `/api` to `http://localhost:8000` (`frontend/vite.config.js:6`).
+- Offline-friendly: production build is fully static, no CDN dependency, no runtime network.
 
 ### 3.2 Backend API
 
-**Planned location:** `backend/app/api/`, `backend/app/main.py`
+**Location:** `backend/app/api/routes.py:1`, `backend/app/main.py:1` (Phase 12 complete)
 
-- FastAPI, single process (Uvicorn), single port.
-- Endpoints (planned, not yet implemented):
-  - `POST /api/ingest` — upload doc (PDF/CSV/JSON/image), validated, queued for parsing.
-  - `POST /api/query` — simple evidence-backed Q&A.
-  - `POST /api/investigations` — start investigation (objective + scope).
-  - `GET  /api/investigations/{id}` — status, steps, evidence, report.
-  - `GET  /api/evidence/{id}` — chunk + source metadata.
-  - `GET  /api/audit?investigationId=` — replay trail.
-  - `GET  /api/health` — model/vector-store/DB readiness.
-- Pydantic models for all request/response schemas.
-- Structured JSON logging.
+- FastAPI single-process Uvicorn on `127.0.0.1:8000`, CORS allow-all for demo.
+- Pydantic request/response schemas throughout.
+- Endpoints (all live):
+  - `GET  /api/health`, `GET /api/status` — `documents / chunks / vector_store / investigations / offline / mock_default`.
+  - `GET  /api/documents` — list indexed documents (id, filename, file_type, sha256, source_path).
+  - `POST /api/ingest` — multipart upload, validated by `IngestionPipeline`, chunked, embedded, stored in Chroma.
+  - `POST /api/investigations` — `{objective}` (≥10 chars) → `InvestigationOrchestrator` → `InvestigationReport{investigation_id, objective, status, plan, steps_executed, evidence_refs, evidence_state, summary, created_at, completed_at, error}`.
+  - `GET  /api/investigations/{id}` — full report (recomputed from audit log if no live state).
+  - `GET  /api/investigations/{id}/graph` — `EvidenceGraph.to_dict()` or `load_from_db(inv_id)`.
+  - `GET  /api/investigations/{id}/audit` — `audit/logger.get_audit_log(inv_id)` with `count` and `events`.
+  - `POST /api/query` — `answer_with_evidence` + `find_contradictions`.
+  - `GET  /api/evidence/{chunk_id}` — chunk detail (text, metadata, document, source).
+- Lifespan hook initializes SQLite, audit table, investigation tables; mounts `frontend/dist` as static if present.
+- All routes reuse the existing Phase 2–11 modules; no architectural changes.
 
 ### 3.3 Local Model Runtime + Model Adapter
 
@@ -309,6 +315,7 @@ models/             # gitignored when large; Ollama registry or GGUF files
 | ADR-004 | Single orchestrator + deterministic tools over agent swarm | Predictable, testable, less RAM, clearer audit | Accepted |
 | ADR-005 | Deterministic chunking, no LLM in ingestion | Reproducible, offline, testable | Accepted |
 | ADR-006 | Vision as stub adapter until Phase 10 | Keeps Phase 1–9 focused; no rewrite later | Accepted |
+| ADR-020 | FastAPI + Vite/React judge-grade demo UI | Single-page, 6 panels, offline static build (154 kB), no TypeScript overhead, FastAPI static-mount; MockAdapter heuristics for demo-ready evidence states | Accepted (Phase 12) |
 
 ## 7. What Is NOT in Architecture (Non-Goals)
 
@@ -316,11 +323,11 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 11 complete — Safety policy + audit logger, orchestrator integration, 180 tests, offline. Next: Phase 12 — Judge-grade UI/demo.
+Phase 12 complete — Judge-grade demo UI + API, 180 tests + frontend build, offline. No further phases planned; this is the final release.
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 11 complete. Safety policy + audit logger, 180 tests, offline.
+**Last updated:** 2026-08-28 — Phase 12 complete. Demo UI+API, 180 tests, frontend build 154 kB, offline. Final phase.
 
 ## 9. Phase 2–11 ADRs
 
