@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 9 — Contradiction Detection (Complete)
+> **Status:** Phase 10 — Multimodal/Vision (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -215,11 +215,11 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.15 Multimodal Layer (Phase 10)
 
-**Planned location:** `backend/app/multimodal/`
+**Location:** `backend/app/vision/adapter.py:1` (Phase 10 complete)
 
-- Phase 1: stub `VisionAdapter` + `inspect_image` tool that returns `NOT_IMPLEMENTED` with audit entry.
-- Phase 10: add `VisionAdapter` implementation (e.g., LLaVA / Qwen-VL quantized, or Moondream small) — same adapter pattern, same resource guard (swap text model out if RAM constrained).
-- No architecture rewrite required: orchestrator already calls tools via adapter.
+- `VisionAdapter` protocol `describe_image(image_path,prompt)->str`, `MockVisionAdapter` deterministic offline `[MOCK VISION]`, `OllamaVisionAdapter` localhost-only `httpx` to `vision_model llava:7b` (no download), config `vision_provider/mock`, `vision_model`, `vision_host`, `vision_timeout_s`, `vision_max_image_bytes`.
+- Tool `backend/app/tools/inspect_image.py:1` validates `PNG/JPG/JPEG/WEBP` (magic + ext), 10 MB limit, path within `data/raw|processed|tests/fixtures|tmp`, SHA-256, provenance `EvidenceRef{filename,sha256,source_path}`, returns `ToolOutput{description,sha256}` as evidence (not fact).
+- Integrates with `EvidenceRef`/`EvidenceGraph`/`EvidenceState` as image evidence; registered in `registry.py:inspect_image`, no new deps, no cloud, offline.
 
 ## 4. Module Layout (Planned)
 
@@ -317,13 +317,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 9 complete — Contradictions engine, 6 term pairs + numeric, provenance, 153 tests. Next: Phase 10 — Multimodal input.
+Phase 10 complete — MockVisionAdapter + OllamaVisionAdapter, inspect_image tool, 166 tests, offline. Next: Phase 11 — Safety + auditability.
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 9 complete. Added contradictions engine, 153 tests.
+**Last updated:** 2026-08-28 — Phase 10 complete. Vision adapter + inspect_image, 166 tests, offline. Next: Phase 11 — Safety + auditability.
 
-## 9. Phase 2–9 ADRs
+## 9. Phase 2–10 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -338,3 +338,4 @@ Phase 9 complete — Contradictions engine, 6 term pairs + numeric, provenance, 
 | ADR-015 | InvestigationOrchestrator bounded 8 steps, 30s, registry-only | LLM plans, code executes, evidence gating, persistence in workbench.db, MockAdapter offline | Accepted (Phase 7) |
 | ADR-016 | EvidenceGraph deterministic Pydantic, 6 nodes/5 edges, provenance | No duplicate, invalid ref rejection, stable IDs, from_investigation, persistence, offline | Accepted (Phase 8) |
 | ADR-017 | Contradiction engine deterministic term pairs + numeric | 6 pairs + same context numeric diff, provenance, no LLM, offline | Accepted (Phase 9) |
+| ADR-018 | Vision adapter mock default, inspect_image tool | Local-only, SHA-256 provenance, PNG/JPG/WEBP, evidence integration, no heavy deps | Accepted (Phase 10) |

@@ -239,9 +239,9 @@ def test_no_network_and_no_arbitrary_execution(tmp_path: Path):
     assert "exec(" not in orch_src
     assert "os.system" not in orch_src
     assert "subprocess" not in orch_src
-    # Registry only allows 4 tools
+    # Registry only allows deterministic local tools (now 5 with inspect_image)
     from backend.app.tools.registry import list_tools
-    assert set(list_tools()) == {"search_documents", "retrieve_evidence", "query_sensor_data", "search_maintenance_logs"}
+    assert set(list_tools()) == {"search_documents", "retrieve_evidence", "query_sensor_data", "search_maintenance_logs", "inspect_image"}
 
 def test_objective_validation(tmp_path: Path):
     retr = make_retriever(tmp_path)

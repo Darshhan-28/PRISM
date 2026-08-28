@@ -355,7 +355,8 @@ def test_registry_list():
     assert "retrieve_evidence" in tools
     assert "query_sensor_data" in tools
     assert "search_maintenance_logs" in tools
-    assert len(tools) == 4
+    assert "inspect_image" in tools
+    assert len(tools) >= 5
 
 def test_registry_get_valid():
     spec = get_tool("search_documents")

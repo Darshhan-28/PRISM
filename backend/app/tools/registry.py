@@ -7,12 +7,14 @@ from backend.app.tools.search_documents import SearchDocumentsInput, search_docu
 from backend.app.tools.retrieve_evidence import RetrieveEvidenceInput, retrieve_evidence
 from backend.app.tools.query_sensor_data import QuerySensorDataInput, query_sensor_data
 from backend.app.tools.search_maintenance_logs import SearchMaintenanceLogsInput, search_maintenance_logs
+from backend.app.tools.inspect_image import InspectImageInput, inspect_image
 
 TOOL_REGISTRY: dict[str, dict[str, Any]] = {
     "search_documents": {"input_model": SearchDocumentsInput, "handler": search_documents},
     "retrieve_evidence": {"input_model": RetrieveEvidenceInput, "handler": retrieve_evidence},
     "query_sensor_data": {"input_model": QuerySensorDataInput, "handler": query_sensor_data},
     "search_maintenance_logs": {"input_model": SearchMaintenanceLogsInput, "handler": search_maintenance_logs},
+    "inspect_image": {"input_model": InspectImageInput, "handler": inspect_image},
 }
 
 

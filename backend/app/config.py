@@ -53,6 +53,13 @@ class IngestionConfig(BaseSettings):
     llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     allow_cloud_adapter: bool = Field(default=False)
 
+    # Vision (Phase 10) — local-only, mock default
+    vision_provider: str = Field(default="mock")  # mock | ollama
+    vision_model: str = Field(default="llava:7b")  # placeholder, not downloaded
+    vision_host: str = Field(default="http://localhost:11434")
+    vision_timeout_s: int = Field(default=30, ge=5, le=120)
+    vision_max_image_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+
 
 # Singleton accessor used by pipeline/tools — import `get_config()` not raw env.
 _config: IngestionConfig | None = None

@@ -158,18 +158,12 @@ class EvidenceRef(BaseModel):
 - **Validation:** date range, keyword length.
 - **Evidence:** each row is an evidence ref.
 
-#### `inspect_image` (Stub until Phase 10)
-- **Purpose:** Describe/extract info from equipment photo, scanned doc, P&ID diagram via `VisionAdapter`.
-- **Input:**
-  ```python
-  class InspectImageInput(BaseModel):
-      image_path: str  # must be under data/raw/ or data/processed/, validated
-      prompt: str = "Describe equipment condition and visible anomalies."
-  ```
-- **Output (Phase 1–9):** `{"status": "NOT_IMPLEMENTED", "message": "Vision support planned for Phase 10."}` + audit entry.
-- **Output (Phase 10):** `ImageInsight { description: str, evidence_refs: [...] }`
-- **Validation:** path traversal guard, file-type allowlist (`png/jpeg/webp/pdf`), size limit.
-- **Permissions:** read-only.
+#### `inspect_image` (Implemented Phase 10)
+- **Purpose:** Describe/extract info from equipment photo via `VisionAdapter`.
+- **Input:** `InspectImageInput{image_path: str (data/raw|processed|tmp), prompt: str}` — validates ext PNG/JPG/JPEG/WEBP, magic, 10 MB, traversal.
+- **Output:** `ToolOutput{result: {description, sha256, filename}, evidence_refs: [EvidenceRef{filename,sha256,source_path}]}`, mock deterministic `[MOCK VISION]`, Ollama local only.
+- **Validation:** path within allowed roots, size, magic.
+- **Permissions:** read-only, offline, no cloud.
 
 #### `compare_sources`
 - **Purpose:** Deterministic + LLM-assisted comparison of two or more evidence items for contradictions.
