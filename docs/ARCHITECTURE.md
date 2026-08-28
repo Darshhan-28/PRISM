@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 6 — Tool Layer (Complete)
+> **Status:** Phase 7 — Investigation Mode (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -163,18 +163,12 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.10 Agent / Investigation Orchestrator
 
-**Planned location:** `backend/app/orchestrator/`
+**Location:** `backend/app/orchestrator/investigation.py:1` (Phase 7 complete)
 
-- **Single orchestrator** (not a swarm) — `InvestigationOrchestrator`.
-- Flow:
-  1. Parse objective → plan steps (LLM for planning, but plan is validated against tool allowlist).
-  2. For each step: call tool → collect evidence → update evidence graph.
-  3. After retrieval: run Evidence Engine + Contradiction Engine.
-  4. Generate draft answer via LLM (grounded prompt: only use provided evidence).
-  5. Evidence-gate the draft → assign `SUPPORTED | PARTIALLY_SUPPORTED | INSUFFICIENT_EVIDENCE | CONFLICTING_EVIDENCE`.
-  6. Safety/policy check → add disclaimers or block unsafe advice.
-  7. Persist audit trail → return structured response.
-- ReAct-style loop but bounded (max steps, max tool calls) to stay within 16 GB RAM.
+- Bounded orchestrator `InvestigationOrchestrator(MAX_STEPS=8, STEP_TIMEOUT=30s, MAX_TOOL_CALLS=8)` — validates objective 10..2000 chars, asks `LLMAdapter` for `InvestigationPlan{objective, steps: InvestigationStep[step_no,tool,input,rationale]}`, extracts JSON, validates sequential step_no, tool allowlist, Pydantic input per tool, rejects unknown/duplicate/excessive/invalid.
+- Execution: `registry.execute_tool()` deterministic, per-step timing, evidence_refs collection (handles None chunk_id for sensor), pseudo `RetrievedChunk` for evidence gating, `evidence/engine.evaluate` → `EvidenceState`, summary via grounded prompt `<RETRIEVED_CHUNK>`.
+- Persistence: `investigations(id,objective,status,evidence_state,summary,created_at,completed_at)` + `investigation_steps(id,investigation_id,step_no,tool,input,rationale,success,result,error,evidence_refs)` in `data/workbench.db` (existing DB, no new DB).
+- No recursion, no shell, no network, no arbitrary Python — LLM plans only, code executes. MockAdapter default.
 
 ### 3.11 Evidence Engine
 
@@ -316,13 +310,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 6 complete — 4 deterministic tools, registry allowlist, SQLite sensor/maintenance, 110 tests. Next: Phase 7 — Investigation Mode (orchestrator planning, bounded execution, audit).
+Phase 7 complete — bounded orchestrator, 124 tests, offline. Next: Phase 8 — Evidence Graph (nodes/edges, trail).
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 6 complete. Added tool layer, registry, sensor/maintenance SQLite, 110 tests.
+**Last updated:** 2026-08-28 — Phase 7 complete. Added orchestrator, validation, persistence, 124 tests.
 
-## 9. Phase 2–6 ADRs
+## 9. Phase 2–7 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -334,3 +328,4 @@ Phase 6 complete — 4 deterministic tools, registry allowlist, SQLite sensor/ma
 | ADR-012 | LLM Adapter: Mock default, Ollama httpx localhost-only | Offline, swappable without orchestrator rewrite, 30s timeout, typed errors | Accepted (Phase 4) |
 | ADR-013 | Evidence engine 4 states + DI | Citation/provenance gated, deterministic, CPU-only, offline | Accepted (Phase 5) |
 | ADR-014 | Tool layer deterministic, registry allowlist, SQLite | Reuses Retriever/Chroma/workbench.db, Pydantic validation, no LLM/network, provenance preserved | Accepted (Phase 6) |
+| ADR-015 | InvestigationOrchestrator bounded 8 steps, 30s, registry-only | LLM plans, code executes, evidence gating, persistence in workbench.db, MockAdapter offline | Accepted (Phase 7) |

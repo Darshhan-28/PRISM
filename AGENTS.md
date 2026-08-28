@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 6 — Tool Layer (Complete).** Deterministic tools (search_documents, retrieve_evidence, query_sensor_data, search_maintenance_logs) + registry allowlist, 110 tests.
+Current phase: **Phase 7 — Investigation Mode (Complete).** Bounded orchestrator (MAX_STEPS=8, 30s timeout), plan validation, registry execution, evidence gating, persistence, 124 tests.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 6 complete. Tool layer with 4 deterministic tools, registry, 110 tests, offline. Next: Phase 7 — Investigation Mode.
+**Last updated:** 2026-08-28 — Phase 7 complete. Investigation orchestrator, 124 tests, offline. Next: Phase 8 — Evidence Graph.
