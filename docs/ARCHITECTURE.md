@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 10 — Multimodal/Vision (Complete)
+> **Status:** Phase 11 — Safety + Auditability (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -198,20 +198,19 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.13 Safety / Policy Layer
 
-**Planned location:** `backend/app/safety/policy.py`
+**Location:** `backend/app/safety/policy.py:1` (Phase 11 complete)
 
-- SOP compliance checks (e.g., pressure thresholds, shutdown procedures).
-- Safety-critical responses require: evidence + disclaimer + audit log entry.
-- Prompt-injection defenses (see `docs/SECURITY.md`): input sanitization, instruction-hierarchy, output validation.
-- Never allow the LLM to emit unvalidated operational directives.
+- Deterministic policy models `SafetyResult{allowed,reason,error_code}`, limits `objective 10..2000, steps/tool-calls 8, output 4000 chars, timeout 30s`.
+- Validates tool allowlist (registry), path/file access (allow `data/raw|processed|tests/fixtures|tmp`, blocks traversal `..`, unauthorized), prompt-injection (`ignore previous instructions`, `system:`, etc.), code execution (`eval(`, `exec(`, `import os`, `subprocess`), network (`http://`, `api.openai.com`).
+- Treats retrieved document contents as untrusted data — delimited evidence, never override system/tool rules. Safe failure: returns `ToolOutput`-like error without crash.
 
 ### 3.14 Audit System
 
-**Planned location:** `backend/app/audit/logger.py`
+**Location:** `backend/app/audit/logger.py:1` (Phase 11 complete)
 
-- Append-only log (SQLite `audit_log` + optional JSONL mirror `data/audit/*.jsonl`).
-- Records: query, plan, tool calls (input/output truncated + hash), evidence refs, evidence state, contradiction flags, final response, timestamps.
-- Replay: re-run investigation from logged inputs (deterministic tools) for accountability.
+- Append-only `audit_log(id,investigation_id,timestamp,event_type,tool,sanitized_input,success,execution_ms,evidence_refs,error_code)` in `data/workbench.db` (existing DB, no new DB). Sanitized inputs truncated 1000 chars, evidence refs truncated 2000 chars, no secrets.
+- Helpers `log_event`, `get_audit_log`, `count_audit_logs`; integrated as `InvestigationOrchestrator → Safety → Tool Registry → Tool → Evidence` with events `investigation_start`, `plan_generated`, `tool_call`, `evidence_state`, `investigation_complete`, `safety_rejection`, `prompt_injection_detected`.
+- Replay via `get_audit_log(investigation_id)` ordered by timestamp; deterministic, offline, no network.
 
 ### 3.15 Multimodal Layer (Phase 10)
 
@@ -317,13 +316,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 10 complete — MockVisionAdapter + OllamaVisionAdapter, inspect_image tool, 166 tests, offline. Next: Phase 11 — Safety + auditability.
+Phase 11 complete — Safety policy + audit logger, orchestrator integration, 180 tests, offline. Next: Phase 12 — Judge-grade UI/demo.
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 10 complete. Vision adapter + inspect_image, 166 tests, offline. Next: Phase 11 — Safety + auditability.
+**Last updated:** 2026-08-28 — Phase 11 complete. Safety policy + audit logger, 180 tests, offline.
 
-## 9. Phase 2–10 ADRs
+## 9. Phase 2–11 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -339,3 +338,4 @@ Phase 10 complete — MockVisionAdapter + OllamaVisionAdapter, inspect_image too
 | ADR-016 | EvidenceGraph deterministic Pydantic, 6 nodes/5 edges, provenance | No duplicate, invalid ref rejection, stable IDs, from_investigation, persistence, offline | Accepted (Phase 8) |
 | ADR-017 | Contradiction engine deterministic term pairs + numeric | 6 pairs + same context numeric diff, provenance, no LLM, offline | Accepted (Phase 9) |
 | ADR-018 | Vision adapter mock default, inspect_image tool | Local-only, SHA-256 provenance, PNG/JPG/WEBP, evidence integration, no heavy deps | Accepted (Phase 10) |
+| ADR-019 | Safety policy + audit trail, orchestrator integration | Tool allowlist, path guards, injection/code/network detection, append-only audit in workbench.db, sanitized, offline | Accepted (Phase 11) |

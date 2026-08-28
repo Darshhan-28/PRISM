@@ -54,7 +54,7 @@ SIH26117/
 11. Safety + auditability
 12. Judge-grade UI/demo
 
-Current phase: **Phase 10 — Multimodal/Vision (Complete).** MockVisionAdapter + OllamaVisionAdapter, inspect_image tool, 166 tests.
+Current phase: **Phase 11 — Safety + Auditability (Complete).** Safety policy + audit trail, 180 tests.
 
 ### Hardware Constraint (Non-Negotiable)
 
@@ -187,4 +187,4 @@ At session end / after a significant task:
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 10 complete. Vision adapter + inspect_image, 166 tests, offline. Next: Phase 11 — Safety + auditability.
+**Last updated:** 2026-08-28 — Phase 11 complete. Safety policy + audit logger, 180 tests, offline. Next: Phase 12 — Judge-grade UI/demo.

@@ -15,6 +15,8 @@ from backend.app.tools.registry import execute_tool, list_tools, TOOL_REGISTRY
 from backend.app.evidence.engine import EvidenceState, EvidenceRef, EvidenceResult, evaluate, build_grounded_prompt
 from backend.app.retrieval.retriever import RetrievedChunk
 from backend.app.store.db import get_connection, init_db
+from backend.app.safety.policy import validate_objective as safety_validate_objective, validate_tool_input as safety_validate_tool_input, validate_tool_name as safety_validate_tool_name, check_step_limits as safety_check_step_limits, check_output_size as safety_check_output_size, detect_prompt_injection as safety_detect_injection
+from backend.app.audit.logger import log_event
 
 # Hard limits per spec
 MAX_STEPS = 8
@@ -184,8 +186,35 @@ class InvestigationOrchestrator:
         created_at = datetime.now(timezone.utc).isoformat()
         investigation_id = uuid.uuid4().hex
         effective_retriever = retriever or self.retriever
-
-        # Validate objective
+        # Audit: investigation start
+        try:
+            log_event(investigation_id, "investigation_start", raw_input={"objective": objective[:500]}, success=None, db_path=self.db_path)
+        except Exception:
+            pass
+        # Safety: objective validation (treat as untrusted)
+        safety_res = safety_validate_objective(objective)
+        if not safety_res.allowed:
+            completed_at = datetime.now(timezone.utc).isoformat()
+            try:
+                log_event(investigation_id, "safety_rejection", raw_input={"objective": objective[:500]}, success=False, error_code=safety_res.error_code, db_path=self.db_path)
+            except Exception:
+                pass
+            report = InvestigationReport(
+                investigation_id=investigation_id,
+                objective=objective,
+                status="failed",
+                plan=None,
+                steps_executed=[],
+                evidence_refs=[],
+                evidence_state=EvidenceState.INSUFFICIENT_EVIDENCE,
+                summary=f"Invalid objective: {safety_res.reason}",
+                created_at=created_at,
+                completed_at=completed_at,
+                error=safety_res.reason,
+            )
+            self._persist(report)
+            return report
+        # Validate objective (original length check)
         try:
             _validate_objective(objective)
         except ValueError as e:
@@ -233,9 +262,20 @@ class InvestigationOrchestrator:
             json_str = _extract_json(raw)
             data = json.loads(json_str)
             plan = InvestigationPlan(**data)
-            # Ensure objective in plan matches input objective (allow mismatch but warn)
-            # We keep input objective as canonical
+            # Safety: check plan steps count via policy
+            safety_step = safety_check_step_limits(len(plan.steps))
+            # Note: check_step_limits expects current count, we check if plan exceeds max
+            if len(plan.steps) > MAX_STEPS:
+                raise ValueError(f"Plan exceeds MAX_STEPS {MAX_STEPS}")
+            try:
+                log_event(investigation_id, "plan_generated", raw_input={"plan": data}, success=True, db_path=self.db_path)
+            except Exception:
+                pass
         except Exception as e:
+            try:
+                log_event(investigation_id, "plan_validation_failed", raw_input={"raw": raw[:500]}, success=False, error_code="PLAN_VALIDATION_FAILED", db_path=self.db_path)
+            except Exception:
+                pass
             completed_at = datetime.now(timezone.utc).isoformat()
             report = InvestigationReport(
                 investigation_id=investigation_id,
@@ -276,12 +316,55 @@ class InvestigationOrchestrator:
         steps_executed: list[StepExecution] = []
         all_evidence: list[EvidenceRef] = []
         for step in sorted(plan.steps, key=lambda s: s.step_no):
+            # Safety: check step limits before execution
+            safety_lim = safety_check_step_limits(len(steps_executed))
+            if not safety_lim.allowed:
+                steps_executed.append(
+                    StepExecution(
+                        step_no=step.step_no,
+                        tool=step.tool,
+                        input=step.input,
+                        rationale=step.rationale,
+                        success=False,
+                        result=None,
+                        evidence_refs=[],
+                        error=safety_lim.reason,
+                        execution_ms=0,
+                    )
+                )
+                try:
+                    log_event(investigation_id, "safety_rejection", tool=step.tool, raw_input=step.input, success=False, error_code=safety_lim.error_code, db_path=self.db_path)
+                except Exception:
+                    pass
+                break
+            # Safety: validate tool name and input (untrusted from LLM plan)
+            safety_tool = safety_validate_tool_name(step.tool)
+            if not safety_tool.allowed:
+                steps_executed.append(
+                    StepExecution(step_no=step.step_no, tool=step.tool, input=step.input, rationale=step.rationale, success=False, result=None, evidence_refs=[], error=safety_tool.reason, execution_ms=0)
+                )
+                try:
+                    log_event(investigation_id, "safety_rejection", tool=step.tool, raw_input=step.input, success=False, error_code=safety_tool.error_code, db_path=self.db_path)
+                except Exception:
+                    pass
+                continue
+            safety_inp = safety_validate_tool_input(step.tool, step.input)
+            if not safety_inp.allowed:
+                steps_executed.append(
+                    StepExecution(step_no=step.step_no, tool=step.tool, input=step.input, rationale=step.rationale, success=False, result=None, evidence_refs=[], error=safety_inp.reason, execution_ms=0)
+                )
+                try:
+                    log_event(investigation_id, "safety_rejection", tool=step.tool, raw_input=step.input, success=False, error_code=safety_inp.error_code, db_path=self.db_path)
+                except Exception:
+                    pass
+                continue
+
             t0 = time.time()
             # Prepare kwargs for tool execution (inject retriever/db)
             exec_kwargs: dict[str, Any] = {}
             if step.tool == "search_documents" and effective_retriever is not None:
                 exec_kwargs["retriever"] = effective_retriever
-            if step.tool in ("query_sensor_data", "search_maintenance_logs", "retrieve_evidence") and self.db_path is not None:
+            if step.tool in ("query_sensor_data", "search_maintenance_logs", "retrieve_evidence", "inspect_image") and self.db_path is not None:
                 exec_kwargs["db_path"] = self.db_path
             # Also allow caller kwargs to override
             exec_kwargs.update({k: v for k, v in kwargs.items() if k in ("retriever", "db_path")})
@@ -294,6 +377,21 @@ class InvestigationOrchestrator:
                     # Mark timeout but keep result
                     result = result.model_copy(update={"success": False, "error": f"step timeout {elapsed_ms}ms > {STEP_TIMEOUT_SECONDS*1000}ms"}) if hasattr(result, "model_copy") else result
 
+                # Safety: output size check (treat evidence as untrusted)
+                try:
+                    import json as _json2
+                    out_str = _json2.dumps(getattr(result, "result", None), default=str)
+                    oc = safety_check_output_size(out_str)
+                    if not oc.allowed:
+                        result = result.model_copy(update={"result": out_str[:4000], "truncated": True, "error": oc.reason}) if hasattr(result, "model_copy") else result
+                    # Detect injection in tool output (evidence is untrusted, never executable)
+                    if safety_detect_injection(out_str):
+                        try:
+                            log_event(investigation_id, "prompt_injection_detected", tool=step.tool, raw_input={"output": out_str[:500]}, success=False, error_code="PROMPT_INJECTION", db_path=self.db_path)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
                 # result is ToolOutput
                 success = bool(getattr(result, "success", False))
                 err = getattr(result, "error", None)
@@ -302,16 +400,13 @@ class InvestigationOrchestrator:
                 for ref in getattr(result, "evidence_refs", []):
                     data = ref.model_dump() if hasattr(ref, "model_dump") else dict(ref)
                     if not data.get("chunk_id"):
-                        # generate pseudo chunk_id for non-chunk evidence
                         fallback = data.get("document_id") or data.get("filename") or "evidence"
                         data["chunk_id"] = f"{fallback}:{step.step_no}:{len(all_evidence)}"
-                    # ensure filename present
                     if not data.get("filename"):
                         data["filename"] = data.get("source_path", "unknown").split("/")[-1].split("\\")[-1] if data.get("source_path") else "unknown"
                     try:
                         ev = EvidenceRef(**data)
                     except Exception:
-                        # fallback minimal
                         ev = EvidenceRef(
                             chunk_id=str(data.get("chunk_id")),
                             document_id=data.get("document_id"),
@@ -338,6 +433,10 @@ class InvestigationOrchestrator:
                         execution_ms=elapsed_ms,
                     )
                 )
+                try:
+                    log_event(investigation_id, "tool_call", tool=step.tool, raw_input=step.input, success=success, execution_ms=elapsed_ms, evidence_refs=[r.model_dump() for r in ev_refs], error_code=err, db_path=self.db_path)
+                except Exception:
+                    pass
             except Exception as e:
                 elapsed_ms = int((time.time() - t0) * 1000)
                 steps_executed.append(
@@ -353,6 +452,10 @@ class InvestigationOrchestrator:
                         execution_ms=elapsed_ms,
                     )
                 )
+                try:
+                    log_event(investigation_id, "tool_call", tool=step.tool, raw_input=step.input, success=False, execution_ms=elapsed_ms, error_code=f"{type(e).__name__}", db_path=self.db_path)
+                except Exception:
+                    pass
             # Enforce max tool calls
             if len(steps_executed) >= MAX_TOOL_CALLS:
                 break
@@ -427,6 +530,14 @@ class InvestigationOrchestrator:
             completed_at=completed_at,
             error=None if all(s.success for s in steps_executed) else "; ".join(s.error for s in steps_executed if s.error),
         )
+        try:
+            log_event(investigation_id, "evidence_state", raw_input={"evidence_state": evidence_state.value}, success=True, execution_ms=0, evidence_refs=[r.model_dump() for r in all_evidence[:5]], db_path=self.db_path)
+        except Exception:
+            pass
+        try:
+            log_event(investigation_id, "investigation_complete", raw_input={"summary": summary[:500]}, success=final_status != "failed", execution_ms=int((datetime.fromisoformat(completed_at) - datetime.fromisoformat(created_at)).total_seconds() * 1000), evidence_refs=[r.model_dump() for r in all_evidence[:5]], db_path=self.db_path)
+        except Exception:
+            pass
         self._persist(report)
         return report
 
