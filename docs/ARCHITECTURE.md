@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — SIH26117 Sovereign On-Premise Agentic AI Workbench
 
-> **Status:** Phase 8 — Evidence Graph (Complete)
+> **Status:** Phase 9 — Contradiction Detection (Complete)
 > **Hardware target:** Windows 11, Intel 12th-gen mobile, 16 GB RAM, Intel Iris Xe (no NVIDIA GPU), 512 GB NVMe
 > **Principle:** Local-first, model-agnostic, lightweight, auditable.
 
@@ -190,13 +190,11 @@ class VisionAdapter(Protocol):  # stub until Phase 10
 
 ### 3.12 Contradiction Engine
 
-**Planned location:** `backend/app/evidence/contradiction.py`
+**Location:** `backend/app/evidence/contradictions.py:1` (Phase 9 complete)
 
-- Pairwise comparison of evidence chunks that bear on the same fact (equipment/date/metric).
-- Methods (progressive):
-  - Phase 9a: rule-based (date/status/value mismatch) + embedding similarity for candidate pairs + LLM-assisted natural-language contradiction check (local model, grounded prompt).
-  - Output: `Conflict { sources: [refA, refB], field, values, severity }`.
-- Conflicts surface as `CONFLICTING_EVIDENCE` and are shown explicitly — never silently resolved.
+- Deterministic `find_contradictions(evidence)` + `evaluate_with_contradictions` — no LLM, offline.
+- Rules: 6 term pairs `normal/exceeds`, `within limit/above limit`, `operational/failed`, `healthy/fault`, `present/absent`, `replaced/pending` (phrase-aware, word-boundary) + numeric conflicts for same equipment/metric (P-204, pressure etc., unit-aware, diff>0.5 or >5%).
+- Output `Contradiction{id, evidence_refs[2], conflicting_terms/metric/values, explanation}` + `ContradictionReport{has_contradictions, contradictions, evidence_state}` with `CONFLICTING_EVIDENCE` when found. Preserves `EvidenceRef` provenance, deduped, deterministic sort, handles empty/malformed.
 
 ### 3.13 Safety / Policy Layer
 
@@ -319,13 +317,13 @@ models/             # gitignored when large; Ollama registry or GGUF files
 
 ## 8. Next Step
 
-Phase 8 complete — Evidence Graph with 6 node types / 5 edge types, provenance preserved, persistence, 136 tests. Next: Phase 9 — Contradiction Detection.
+Phase 9 complete — Contradictions engine, 6 term pairs + numeric, provenance, 153 tests. Next: Phase 10 — Multimodal input.
 
 ---
 
-**Last updated:** 2026-08-28 — Phase 8 complete. Added EvidenceGraph, persistence, 136 tests.
+**Last updated:** 2026-08-28 — Phase 9 complete. Added contradictions engine, 153 tests.
 
-## 9. Phase 2–8 ADRs
+## 9. Phase 2–9 ADRs
 
 | # | Decision | Rationale | Status |
 |---|----------|-----------|--------|
@@ -339,3 +337,4 @@ Phase 8 complete — Evidence Graph with 6 node types / 5 edge types, provenance
 | ADR-014 | Tool layer deterministic, registry allowlist, SQLite | Reuses Retriever/Chroma/workbench.db, Pydantic validation, no LLM/network, provenance preserved | Accepted (Phase 6) |
 | ADR-015 | InvestigationOrchestrator bounded 8 steps, 30s, registry-only | LLM plans, code executes, evidence gating, persistence in workbench.db, MockAdapter offline | Accepted (Phase 7) |
 | ADR-016 | EvidenceGraph deterministic Pydantic, 6 nodes/5 edges, provenance | No duplicate, invalid ref rejection, stable IDs, from_investigation, persistence, offline | Accepted (Phase 8) |
+| ADR-017 | Contradiction engine deterministic term pairs + numeric | 6 pairs + same context numeric diff, provenance, no LLM, offline | Accepted (Phase 9) |
