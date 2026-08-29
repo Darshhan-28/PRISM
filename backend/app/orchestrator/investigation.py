@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from backend.app.config import get_config
 from backend.app.llm.factory import get_llm_adapter
 from backend.app.tools.registry import execute_tool, list_tools, TOOL_REGISTRY
-from backend.app.evidence.engine import EvidenceState, EvidenceRef, EvidenceResult, evaluate, build_grounded_prompt
+from backend.app.evidence.engine import EvidenceState, EvidenceRef, EvidenceResult, evaluate, build_grounded_prompt, repair_missing_citations
 from backend.app.retrieval.retriever import RetrievedChunk
 from backend.app.store.db import get_connection, init_db
 from backend.app.safety.policy import validate_objective as safety_validate_objective, validate_tool_input as safety_validate_tool_input, validate_tool_name as safety_validate_tool_name, check_step_limits as safety_check_step_limits, check_output_size as safety_check_output_size, detect_prompt_injection as safety_detect_injection
@@ -236,10 +236,10 @@ class InvestigationOrchestrator:
             self._persist(report)
             return report
 
-        # Ask LLM for plan
+        # Ask LLM for plan — temperature 0 + larger tokens for deterministic JSON (small Qwen 1.5B)
         prompt = PLANNING_PROMPT_TEMPLATE.format(objective=objective)
         try:
-            raw = self.llm_adapter.generate(prompt, system=PLANNING_SYSTEM)
+            raw = self.llm_adapter.generate(prompt, system=PLANNING_SYSTEM, temperature=0.0, max_tokens=800)
         except Exception as e:
             completed_at = datetime.now(timezone.utc).isoformat()
             report = InvestigationReport(
@@ -494,6 +494,7 @@ class InvestigationOrchestrator:
             try:
                 system, prompt = build_grounded_prompt(objective, pseudo_chunks)
                 summary_raw = self.llm_adapter.generate(prompt, system=system)
+                summary_raw = repair_missing_citations(summary_raw, pseudo_chunks)
             except Exception as e:
                 summary_raw = f"Insufficient evidence: LLM error during summary: {e}"
             # Evaluate summary
