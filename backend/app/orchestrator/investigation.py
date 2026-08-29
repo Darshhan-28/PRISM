@@ -109,6 +109,7 @@ Available tools and their inputs:
 - retrieve_evidence: {{chunk_id or document_id}}
 - query_sensor_data: {{equipment_id, metric optional, start_time/end_time optional, aggregation raw|avg|max|min}}
 - search_maintenance_logs: {{equipment_id, start_date/end_date optional, keyword optional}}
+- inspect_image: {{image_path: str path under data/raw|data/processed|tests/fixtures|tmp, prompt: str}} (only if objective mentions image/photo/visual)
 
 Output JSON example:
 {{"objective": "...", "steps": [{{"step_no": 1, "tool": "search_documents", "input": {{"query": "pressure"}}, "rationale": "find SOP"}}]}}
