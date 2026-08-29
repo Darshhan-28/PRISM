@@ -1,14 +1,35 @@
 """FastAPI main — single process, local-only."""
 
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 
 from backend.app.api.routes import router
 from backend.app.store.db import init_db
 
-app = FastAPI(title="Sovereign Workbench", version="12.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    try:
+        from backend.app.audit.logger import _ensure_audit_table
+
+        _ensure_audit_table()
+    except Exception:
+        pass
+    try:
+        from backend.app.orchestrator.investigation import _ensure_investigation_tables
+
+        _ensure_investigation_tables()
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title="Sovereign Workbench", version="12.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,21 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-def startup():
-    init_db()
-    # ensure audit/investigation tables
-    try:
-        from backend.app.audit.logger import _ensure_audit_table
-        _ensure_audit_table()
-    except Exception:
-        pass
-    try:
-        from backend.app.orchestrator.investigation import _ensure_investigation_tables
-        _ensure_investigation_tables()
-    except Exception:
-        pass
 
 app.include_router(router, prefix="/api")
 

@@ -140,8 +140,8 @@ System must refuse to give an ungrounded "yes"; it must check SOP, sensor state,
 
 ## 11. Next Step
 
-Await Phase 1 doc approval, then proceed to Phase 2 (local document ingestion) and seed synthetic flagship data under `data/raw/`.
+Phase 12 complete — Judge-grade demo UI + API, offline investigation with evidence graph and audit trail. No further phases planned; final release.
 
 ---
 
-**Last updated:** 2026-08-27 — Phase 1. No runtime code yet; this spec is the build contract.
+**Last updated:** 2026-08-28 — Phase 12 complete. Demo UI+API, 185 tests, frontend build 154 kB, offline. Final phase.

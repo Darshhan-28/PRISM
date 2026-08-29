@@ -77,13 +77,8 @@ def validate_file(path: Path, allowed_root: Path | None = None) -> ValidationRes
     if ext == "pdf":
         if not header.startswith(b"%PDF"):
             return ValidationResult(ok=False, error_code="MAGIC_MISMATCH", message="PDF magic %PDF not found")
-    elif ext in ("png",):
-        if not header.startswith(b"\x89PNG"):
-            return ValidationResult(ok=False, error_code="MAGIC_MISMATCH", message="PNG magic not found")
-    elif ext in ("jpg", "jpeg"):
-        if not header.startswith(b"\xff\xd8"):
-            return ValidationResult(ok=False, error_code="MAGIC_MISMATCH", message="JPEG magic not found")
     # For text types (csv, json, txt, log, md) — accept any content; no magic enforcement beyond not being binary PDF
+    # Note: png/jpg/webp are validated by the vision tool path, not ingestion allowlist
 
     sha = compute_sha256(path)
     return ValidationResult(ok=True, sha256=sha, file_type=ext)

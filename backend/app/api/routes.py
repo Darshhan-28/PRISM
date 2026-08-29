@@ -130,30 +130,35 @@ def get_graph(inv_id: str):
         # Fallback: build from investigation report via orchestrator DB
         # Reconstruct minimal report for graph
         steps_rows = conn.execute("SELECT * FROM investigation_steps WHERE investigation_id=? ORDER BY step_no", (inv_id,)).fetchall()
-        # Create mock report for graph builder
-        from backend.app.orchestrator.investigation import InvestigationReport, InvestigationPlan, StepExecution, EvidenceState
-        # We need to reconstruct evidence_refs from steps
-        import json as _json
+        from types import SimpleNamespace
+
+        from backend.app.evidence.engine import EvidenceRef
+
         steps = []
         all_refs = []
         for r in steps_rows:
-            import json
             refs = json.loads(r["evidence_refs"]) if r["evidence_refs"] else []
-            # Convert to EvidenceRef dicts
-            from backend.app.evidence.engine import EvidenceRef
             ev_refs = [EvidenceRef(**x) for x in refs] if refs else []
             all_refs.extend(ev_refs)
-            steps.append(type("S", (), {"step_no": r["step_no"], "tool": r["tool"], "input": json.loads(r["input"]), "rationale": r["rationale"], "success": bool(r["success"]), "evidence_refs": ev_refs})())
-        # Build minimal report object with needed attrs
-        class R:
-            investigation_id = inv_id
-            objective = row["objective"]
-            status = row["status"]
-            evidence_state = None
-            summary = row["summary"] or ""
-            steps_executed = steps
-            evidence_refs = all_refs
-        report_obj = R()
+            steps.append(
+                SimpleNamespace(
+                    step_no=r["step_no"],
+                    tool=r["tool"],
+                    input=json.loads(r["input"]),
+                    rationale=r["rationale"],
+                    success=bool(r["success"]),
+                    evidence_refs=ev_refs,
+                )
+            )
+        report_obj = SimpleNamespace(
+            investigation_id=inv_id,
+            objective=row["objective"],
+            status=row["status"],
+            evidence_state=None,
+            summary=row["summary"] or "",
+            steps_executed=steps,
+            evidence_refs=all_refs,
+        )
         graph = EvidenceGraph.from_investigation(report_obj)
         return graph.to_dict()
     finally:
