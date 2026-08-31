@@ -1,5 +1,7 @@
 # SIH26117 — Sovereign On-Premise Agentic AI Workbench
 
+> **Run instructions:** See [RUN.md](RUN.md) for step-by-step setup, run, and verify.
+
 Offline, evidence-backed industrial investigation workbench. Runs fully local on 16 GB / Iris Xe laptop, no cloud AI.
 
 **Stack:** FastAPI + SQLite + Chroma + FastEmbed (MiniLM) + Mock/Ollama adapters + Vite+React (offline build).
