@@ -1,4 +1,4 @@
-# SIH26117 — Sovereign On-Premise Agentic AI Workbench
+# PRISM - Sovereign Agentic AI Workbench
 
 > **Run instructions:** See [RUN.md](RUN.md) for step-by-step setup, run, and verify.
 
